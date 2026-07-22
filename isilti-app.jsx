@@ -316,6 +316,12 @@ export default function App() {
   const [deviceId, setDeviceId] = useState(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
+  const [dragX, setDragX] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const [showBreath, setShowBreath] = useState(false);
+  const [breathPhase, setBreathPhase] = useState(0); // 0 inhale, 1 hold, 2 exhale
+  const [paywallStep, setPaywallStep] = useState("commit");
+  const [goal, setGoal] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -366,7 +372,8 @@ export default function App() {
       const newStreak = streak + 1;
       setStreak(newStreak);
       setCheckedToday(true);
-      setToast("Bugünü işaretledin ✨ Serin devam ediyor");
+      const milestones = { 7: "🏆 7 günlük seriye ulaştın!", 14: "🌟 14 gün kesintisiz devam!", 30: "🎉 30 gün — artık bir alışkanlık oldu!", 100: "💎 100 gün! İnanılmazsın." };
+      setToast(milestones[newStreak] || "Bugünü işaretledin ✨ Serin devam ediyor");
       supa(`kullanicilar?on_conflict=device_id`, {
         method: "POST",
         body: JSON.stringify({ device_id: deviceId, seri: newStreak }),
@@ -407,6 +414,15 @@ export default function App() {
 
   const stepIdx = ONBOARD_STEPS.indexOf(screen);
   const progress = stepIdx >= 0 ? (stepIdx + 1) / ONBOARD_STEPS.length : 1;
+
+  useEffect(() => {
+    if (!showBreath) return;
+    setBreathPhase(0);
+    const interval = setInterval(() => {
+      setBreathPhase((p) => (p + 1) % 3);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [showBreath]);
 
   const bgMain = dark ? "#241d3d" : "#FBF6EF";
   const textMain = dark ? "#F3ECFF" : "#2A2140";
@@ -703,7 +719,84 @@ export default function App() {
                     </div>
                   }
                 />
+                {selectedMoods.length > 0 && (
+                  <div
+                    className="isilti-scroll"
+                    style={{
+                      display: "flex",
+                      gap: 8,
+                      padding: "0 20px 6px 20px",
+                      overflowX: "auto",
+                    }}
+                  >
+                    <span
+                      className="sans"
+                      style={{
+                        color: subMain,
+                        fontSize: 11,
+                        alignSelf: "center",
+                        whiteSpace: "nowrap",
+                        marginRight: 2,
+                      }}
+                    >
+                      Senin için:
+                    </span>
+                    {selectedMoods.map((mid) => {
+                      const c = catInfo(mid);
+                      const isActive = activeCategory === mid;
+                      return (
+                        <button
+                          key={mid}
+                          onClick={() => {
+                            setActiveCategory(mid);
+                            setIndex(0);
+                          }}
+                          className="sans"
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 5,
+                            padding: "6px 12px",
+                            borderRadius: 20,
+                            border: isActive ? `1.5px solid ${c.color}` : "1px solid transparent",
+                            background: isActive ? `${c.color}25` : dark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)",
+                            color: isActive ? c.color : subMain,
+                            fontSize: 11,
+                            fontWeight: 600,
+                            whiteSpace: "nowrap",
+                            flexShrink: 0,
+                          }}
+                        >
+                          <c.icon size={11} />
+                          {c.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
                 <div
+                  onPointerDown={(e) => {
+                    setDragging(true);
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                    e.currentTarget.dataset.startX = e.clientX;
+                  }}
+                  onPointerMove={(e) => {
+                    if (!dragging) return;
+                    const startX = Number(e.currentTarget.dataset.startX || 0);
+                    setDragX(e.clientX - startX);
+                  }}
+                  onPointerUp={() => {
+                    setDragging(false);
+                    if (dragX > 70) prev();
+                    else if (dragX < -70) next();
+                    setDragX(0);
+                  }}
+                  onPointerLeave={() => {
+                    if (dragging) {
+                      setDragging(false);
+                      setDragX(0);
+                    }
+                  }}
                   style={{
                     flex: 1,
                     position: "relative",
@@ -714,6 +807,10 @@ export default function App() {
                     display: "flex",
                     flexDirection: "column",
                     overflow: "hidden",
+                    transform: `translateX(${dragX}px) rotate(${dragX / 40}deg)`,
+                    transition: dragging ? "none" : "transform 0.25s ease",
+                    touchAction: "pan-y",
+                    cursor: dragging ? "grabbing" : "grab",
                   }}
                 >
                   <Glow color={cat.color} size={240} />
@@ -743,16 +840,25 @@ export default function App() {
                       <cat.icon size={14} />
                       {cat.label}
                     </div>
-                    <button
-                      onClick={() => toggleFav(current.id)}
-                      style={{ background: "transparent", border: "none" }}
-                    >
-                      <Heart
-                        size={20}
-                        color={favorites.has(current.id) ? "#FF8B6B" : subMain}
-                        fill={favorites.has(current.id) ? "#FF8B6B" : "none"}
-                      />
-                    </button>
+                    <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                      <button
+                        onClick={() => setShowBreath(true)}
+                        style={{ background: "transparent", border: "none" }}
+                        title="Nefes modu"
+                      >
+                        <Wind size={19} color={subMain} />
+                      </button>
+                      <button
+                        onClick={() => toggleFav(current.id)}
+                        style={{ background: "transparent", border: "none" }}
+                      >
+                        <Heart
+                          size={20}
+                          color={favorites.has(current.id) ? "#FF8B6B" : subMain}
+                          fill={favorites.has(current.id) ? "#FF8B6B" : "none"}
+                        />
+                      </button>
+                    </div>
                   </div>
 
                   <div
@@ -1043,7 +1149,10 @@ export default function App() {
 
                   {!premium && (
                     <button
-                      onClick={() => setShowPaywall(true)}
+                      onClick={() => {
+                        setPaywallStep("commit");
+                        setShowPaywall(true);
+                      }}
                       className="sans"
                       style={{
                         width: "100%",
@@ -1131,10 +1240,93 @@ export default function App() {
                 }}
               >
                 <div style={{ padding: "20px 20px 0 20px", display: "flex", justifyContent: "flex-end" }}>
-                  <button onClick={() => setShowPaywall(false)} style={{ background: "transparent", border: "none" }}>
+                  <button
+                    onClick={() => {
+                      setShowPaywall(false);
+                      setPaywallStep("commit");
+                    }}
+                    style={{ background: "transparent", border: "none" }}
+                  >
                     <X size={22} color={textMain} />
                   </button>
                 </div>
+
+                {paywallStep === "commit" && (
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "10px 26px 26px 26px" }}>
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                      <div
+                        style={{
+                          width: 56,
+                          height: 56,
+                          borderRadius: "50%",
+                          background: "linear-gradient(135deg,#FF8B6B,#F4C463)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          marginBottom: 18,
+                        }}
+                      >
+                        <Target size={24} color="#241d3d" />
+                      </div>
+                      <h2 style={{ color: textMain, fontSize: 21, margin: "0 0 8px 0" }}>
+                        Önce küçük bir hedef belirleyelim
+                      </h2>
+                      <p className="sans" style={{ color: subMain, fontSize: 13, lineHeight: 1.6, marginBottom: 20 }}>
+                        Bir hedefe bağlı kalmak, alışkanlık oluşturmanın en güçlü yollarından biri.
+                        Şu an en çok neyi geliştirmek istersin?
+                      </p>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {[
+                          { id: "gunluk", label: "Her gün en az bir olumlama okumak" },
+                          { id: "kaygi", label: "Kaygımı daha iyi yönetmek" },
+                          { id: "ozguven", label: "Kendime olan güvenimi artırmak" },
+                        ].map((g) => (
+                          <button
+                            key={g.id}
+                            onClick={() => setGoal(g.id)}
+                            className="sans"
+                            style={{
+                              textAlign: "left",
+                              padding: "13px 16px",
+                              borderRadius: 14,
+                              border: goal === g.id ? "2px solid #FF8B6B" : `1px solid ${dark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)"}`,
+                              background: goal === g.id ? (dark ? "rgba(255,139,107,0.12)" : "#FFF3EE") : "transparent",
+                              color: textMain,
+                              fontSize: 13,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                            }}
+                          >
+                            {g.label}
+                            {goal === g.id && <Check size={15} color="#FF8B6B" />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <button
+                      disabled={!goal}
+                      onClick={() => setPaywallStep("plans")}
+                      className="sans"
+                      style={{
+                        width: "100%",
+                        padding: "15px 0",
+                        borderRadius: 16,
+                        border: "none",
+                        background: goal ? "linear-gradient(90deg,#FF8B6B,#F4C463)" : (dark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"),
+                        color: goal ? "#241d3d" : subMain,
+                        fontWeight: 700,
+                        fontSize: 15,
+                        marginTop: 20,
+                      }}
+                    >
+                      Bu hedefe bağlı kalmak istiyorum
+                    </button>
+                  </div>
+                )}
+
+                {paywallStep === "plans" && (
+                <>
                 <div style={{ padding: "0 26px", textAlign: "center" }}>
                   <div
                     style={{
@@ -1225,6 +1417,7 @@ export default function App() {
                     onClick={() => {
                       setPremium(true);
                       setShowPaywall(false);
+                      setPaywallStep("commit");
                       fireToast("Bu bir prototip — satın alma simüle edildi 🎉");
                     }}
                     className="sans"
@@ -1245,6 +1438,8 @@ export default function App() {
                     3 gün ücretsiz, sonrasında seçtiğin pakete göre otomatik yenilenir. İstediğin zaman iptal edebilirsin.
                   </p>
                 </div>
+                </>
+                )}
               </div>
             )}
 
@@ -1406,6 +1601,58 @@ export default function App() {
                   >
                     Gönder
                   </button>
+                </div>
+              </div>
+            )}
+
+            {/* BREATH MODE OVERLAY */}
+            {showBreath && (
+              <div
+                className="fadeIn"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background: "radial-gradient(circle at 50% 40%, #392f5c 0%, #17111f 70%)",
+                  zIndex: 65,
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
+                <div style={{ padding: "20px 20px 0 20px", display: "flex", justifyContent: "flex-end" }}>
+                  <button onClick={() => setShowBreath(false)} style={{ background: "transparent", border: "none" }}>
+                    <X size={22} color="#F3ECFF" />
+                  </button>
+                </div>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                  <div
+                    key={breathPhase}
+                    style={{
+                      width: breathPhase === 2 ? 100 : breathPhase === 1 ? 170 : 170,
+                      height: breathPhase === 2 ? 100 : breathPhase === 1 ? 170 : 170,
+                      borderRadius: "50%",
+                      background: `radial-gradient(circle, ${cat.color}66 0%, ${cat.color}22 60%, transparent 80%)`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      transition: "width 4s ease-in-out, height 4s ease-in-out",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: breathPhase === 2 ? 60 : 110,
+                        height: breathPhase === 2 ? 60 : 110,
+                        borderRadius: "50%",
+                        background: `linear-gradient(135deg, ${cat.color}cc, ${cat.color}55)`,
+                        transition: "width 4s ease-in-out, height 4s ease-in-out",
+                      }}
+                    />
+                  </div>
+                  <p className="sans" style={{ color: "#F3ECFF", fontSize: 18, fontWeight: 600, marginTop: 30 }}>
+                    {breathPhase === 0 ? "Nefes al…" : breathPhase === 1 ? "Tut…" : "Bırak…"}
+                  </p>
+                  <p className="sans" style={{ color: "#B4A9D6", fontSize: 12, marginTop: 6, textAlign: "center", maxWidth: 220 }}>
+                    Daireyle birlikte 4 saniye nefes al, 4 saniye tut, 4 saniye ver. İstediğin kadar tekrarla.
+                  </p>
                 </div>
               </div>
             )}
