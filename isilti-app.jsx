@@ -775,28 +775,6 @@ export default function App() {
                   </div>
                 )}
                 <div
-                  onPointerDown={(e) => {
-                    setDragging(true);
-                    e.currentTarget.setPointerCapture(e.pointerId);
-                    e.currentTarget.dataset.startX = e.clientX;
-                  }}
-                  onPointerMove={(e) => {
-                    if (!dragging) return;
-                    const startX = Number(e.currentTarget.dataset.startX || 0);
-                    setDragX(e.clientX - startX);
-                  }}
-                  onPointerUp={() => {
-                    setDragging(false);
-                    if (dragX > 70) prev();
-                    else if (dragX < -70) next();
-                    setDragX(0);
-                  }}
-                  onPointerLeave={() => {
-                    if (dragging) {
-                      setDragging(false);
-                      setDragX(0);
-                    }
-                  }}
                   style={{
                     flex: 1,
                     position: "relative",
@@ -807,10 +785,6 @@ export default function App() {
                     display: "flex",
                     flexDirection: "column",
                     overflow: "hidden",
-                    transform: `translateX(${dragX}px) rotate(${dragX / 40}deg)`,
-                    transition: dragging ? "none" : "transform 0.25s ease",
-                    touchAction: "pan-y",
-                    cursor: dragging ? "grabbing" : "grab",
                   }}
                 >
                   <Glow color={cat.color} size={240} />
@@ -862,6 +836,28 @@ export default function App() {
                   </div>
 
                   <div
+                    onPointerDown={(e) => {
+                      setDragging(true);
+                      e.currentTarget.setPointerCapture(e.pointerId);
+                      e.currentTarget.dataset.startX = e.clientX;
+                    }}
+                    onPointerMove={(e) => {
+                      if (!dragging) return;
+                      const startX = Number(e.currentTarget.dataset.startX || 0);
+                      setDragX(e.clientX - startX);
+                    }}
+                    onPointerUp={() => {
+                      setDragging(false);
+                      if (dragX > 60) prev();
+                      else if (dragX < -60) next();
+                      setDragX(0);
+                    }}
+                    onPointerLeave={() => {
+                      if (dragging) {
+                        setDragging(false);
+                        setDragX(0);
+                      }
+                    }}
                     style={{
                       flex: 1,
                       display: "flex",
@@ -870,6 +866,10 @@ export default function App() {
                       padding: "10px 30px",
                       position: "relative",
                       zIndex: 2,
+                      transform: `translateX(${dragX}px) rotate(${dragX / 50}deg)`,
+                      transition: dragging ? "none" : "transform 0.25s ease",
+                      touchAction: "pan-y",
+                      cursor: dragging ? "grabbing" : "grab",
                     }}
                   >
                     <p
