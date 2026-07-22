@@ -82,8 +82,9 @@ const ONBOARD_STEPS = ["welcome", "name", "mood", "notif"];
 // --- Supabase bağlantısı ---
 // Kendi Supabase projenin URL'ini ve anon (public) API anahtarını buraya yapıştır.
 // Supabase Dashboard > Project Settings > API bölümünden alabilirsin.
-const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
-const SUPABASE_ANON_KEY = "YOUR-ANON-KEY";
+const SUPABASE_URL = "https://ohokjzexntxsyahbiptm.supabase.co";
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ob2tqemV4bnR4c3lhaGJpcHRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3MTM2OTksImV4cCI6MjEwMDI4OTY5OX0.0VB8i8lBL-k_tS74BPI8OLrthJzpIc9-K8eCm4o_9nU";
 
 const SUPABASE_READY =
   !SUPABASE_URL.includes("YOUR-PROJECT") && !SUPABASE_ANON_KEY.includes("YOUR-ANON-KEY");
